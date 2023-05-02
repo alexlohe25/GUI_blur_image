@@ -30,10 +30,16 @@ class MainWidget(QMainWindow):
             if isBMP:
                 print(isBMP)
                 if blurItMessage(f):
-                    print(isBMP)
+                    # Set numero de kernel
                     self.setKernel()
                     print("{} sera blureado en {} mascaras".format(f, self.kernel))
-                    os.system("mpiexec -n {} -host 127.0.0.1 ./mpi_hello".format(f))
+
+                    # Comprueba si existe el enlace simbolico
+                    os.system("if [ -f /mirror/GrayScale.bmp ]; then rm /mirror/GrayScale.bmp; fi")
+                    # Crea un enlace simbolico
+                    os.system("ln -s {} /mirror/GrayScale.bmp".format(f))
+                    # Corre el codigo
+                    os.system("mpiexec -n {} -f machinefile ./mpi".format(f))
                     blurredMessage(f)
 
     def setKernel(self):

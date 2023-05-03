@@ -7,13 +7,28 @@ import os
 import puremagic
 
 #////////////////////////////////////////////////
+class ImageLabel(QLabel):
+    def __init__(self):
+        super().__init__()
+        self.setAlignment(Qt.AlignCenter)
+        self.setText("\n\n Arrastra una imagen para procesarla \n\n")
 
-class MainWidget(QMainWindow):
+    def setPixmap(self, image):
+        scaled = image.scaled(720, 480, Qt.KeepAspectRatio)
+        super().setPixmap(scaled)
+
+class MainWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Blur it")
         self.resize(720, 480)
         self.setAcceptDrops(True)
+
+        mainLayout = QVBoxLayout()
+        self.photoViewer = ImageLabel()
+        mainLayout.addWidget(self.photoViewer)
+        self.setLayout(mainLayout)
+
         self.kernel = 0
 
     def dragEnterEvent(self, event):
@@ -27,6 +42,7 @@ class MainWidget(QMainWindow):
         for f in files:
             isBMP = checkIfIsBMP(f)
             if isBMP:
+                self.photoViewer.setPixmap(QPixmap(f))
                 if blurItMessage(f):
                     # Set numero de kernel
                     self.setKernel()

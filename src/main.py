@@ -22,13 +22,11 @@ class MainWidget(QMainWindow):
         else:
             event.ignore()
 
-# esta funcion hay que modificarla para que mande a llmar el mpich
     def dropEvent(self, event):
         files = [u.toLocalFile() for u in event.mimeData().urls()]
         for f in files:
             isBMP = checkIfIsBMP(f)
             if isBMP:
-                print(isBMP)
                 if blurItMessage(f):
                     # Set numero de kernel
                     self.setKernel()
@@ -39,8 +37,9 @@ class MainWidget(QMainWindow):
                     # Crea un enlace simbolico
                     os.system("ln -s {} /mirror/GrayScale.bmp".format(f))
                     # Corre el codigo
-                    os.system("mpiexec -n {} -f machinefile ./mpi".format(f))
-                    blurredMessage(f)
+                    status = os.system("su mpiu bash -c \"mpiexec -n {} -f machinefile ./mpi\"".format(self.kernel))
+                    if status == 0:
+                        blurredMessage(f)
 
     def setKernel(self):
         i, okPressed = QInputDialog.getInt(self, "Set kernel mask","Amount:", 1, 1, 50, 1)

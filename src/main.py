@@ -5,6 +5,7 @@ from PyQt5.QtGui import *
 import sys
 import os
 import puremagic
+import time
 
 #////////////////////////////////////////////////
 class ImageLabel(QLabel):
@@ -14,6 +15,13 @@ class ImageLabel(QLabel):
         self.setText("\n\n Arrastra una imagen para procesarla \n\n")
 
     def setPixmap(self, image):
+        scaled = image.scaled(720, 480, Qt.KeepAspectRatio)
+        super().setPixmap(scaled)
+
+    def showResults(self, images):
+        i = images[-1]
+        time.sleep(1)
+        image = QPixmap(i)
         scaled = image.scaled(720, 480, Qt.KeepAspectRatio)
         super().setPixmap(scaled)
 
@@ -30,6 +38,7 @@ class MainWidget(QWidget):
         self.setLayout(mainLayout)
 
         self.kernel = 0
+        self.images = []
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -53,9 +62,13 @@ class MainWidget(QWidget):
                     # Crea un enlace simbolico
                     os.system("ln -s {} /mirror/GrayScale.bmp".format(f))
                     # Corre el codigo
-                    status = os.system("su mpiu bash -c \"mpiexec -n {} -f machinefile ./mpi\"".format(self.kernel))
+                    # status = os.system("su mpiu bash -c \"mpiexec -n {} -f machinefile ./mpi\"".format(self.kernel))
+                    status = 0
                     if status == 0:
                         blurredMessage(f)
+                        resultPath = "/mirror/mpiu/images/"
+                        result = resultPath + "blur_" + self.kernel + ".bmp"
+                        self.photoViewer.setPixmap(QPixmap(result))
 
     def setKernel(self):
         i, okPressed = QInputDialog.getInt(self, "Set kernel mask","Amount:", 1, 1, 50, 1)

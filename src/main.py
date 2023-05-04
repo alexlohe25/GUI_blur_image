@@ -5,23 +5,15 @@ from PyQt5.QtGui import *
 import sys
 import os
 import puremagic
-import time
 
 #////////////////////////////////////////////////
 class ImageLabel(QLabel):
     def __init__(self):
         super().__init__()
         self.setAlignment(Qt.AlignCenter)
-        self.setText("\n\n Arrastra una imagen para procesarla \n\n")
+        self.setText("\n\n Drag an image to process it \n\n")
 
     def setPixmap(self, image):
-        scaled = image.scaled(720, 480, Qt.KeepAspectRatio)
-        super().setPixmap(scaled)
-
-    def showResults(self, images):
-        i = images[-1]
-        time.sleep(1)
-        image = QPixmap(i)
         scaled = image.scaled(720, 480, Qt.KeepAspectRatio)
         super().setPixmap(scaled)
 
@@ -38,6 +30,8 @@ class MainWidget(QWidget):
         self.setLayout(mainLayout)
 
         self.kernel = 0
+        self.hosts = []
+        self.spaws = []
         self.images = []
 
     def dragEnterEvent(self, event):
@@ -53,31 +47,62 @@ class MainWidget(QWidget):
             if isBMP:
                 self.photoViewer.setPixmap(QPixmap(f))
                 if blurItMessage(f):
+                    self.setImageToBlur(f)
                     # Set numero de kernel
                     self.setKernel()
-                    print("{} sera blureado en {} mascaras".format(f, self.kernel))
-
-                    # Comprueba si existe el enlace simbolico
-                    os.system("if [ -f /mirror/GrayScale.bmp ]; then rm /mirror/GrayScale.bmp; fi")
-                    # Crea un enlace simbolico
-                    os.system("ln -s {} /mirror/GrayScale.bmp".format(f))
-                    # Corre el codigo
-                    status = os.system("su mpiu bash -c \"mpiexec -n {} -f machinefile ./mpi\"".format(self.kernel))
-                    # status = 0
-                    if status == 0:
-                        blurredMessage(f)
-                        resultPath = "/mirror/mpiu/images/"
-                        result = resultPath + "blur_" + str(self.kernel) + ".bmp"
-                        self.photoViewer.setPixmap(QPixmap(result))
+                    self.testHosts()
+                    if len(self.hosts) > 0:
+                        for i in self.hosts:
+                            self.setSpawFoHost(i)
+                    else:
+                        message("No connected hosts found")
+                    hosts = ""
+                    for i, host in enumerate(self.hosts):
+                        hosts += host + ":" + str(self.spaws[i])
+                        if i < len(self.hosts)-1:
+                            hosts += ","
+                    print("{} will be blurred in {} masks".format(f, self.kernel))
+                    self.blurImage(f, hosts)
 
     def setKernel(self):
         i, okPressed = QInputDialog.getInt(self, "Set kernel mask","Amount:", 1, 1, 50, 1)
         if okPressed:
             self.kernel = i
+    
+    def testHosts(self):
+        machinefile_path = "/mirror/mpiu/machinefile"
+        machinefile = open(machinefile_path, "r")
+        for host in machinefile:
+            if host != "\n":
+                host = host.split(":")[0]
+                if os.system("ping -c 4 " + host) == 0:
+                    self.hosts.append(host)
+        machinefile.close()
+    
+    def setSpawFoHost(self, host):
+        i, okPressed = QInputDialog.getInt(self, "Set spaw for {}".format(host),"Amount:", 0, 0, 50, 1)
+        if okPressed:
+            self.spaws.append(i)
+
+    def setImageToBlur(self, file):
+        # Comprueba si existe el enlace simbolico
+        os.system("if [ -f /mirror/GrayScale.bmp ]; then rm /mirror/GrayScale.bmp; fi")
+        # Crea un enlace simbolico
+        os.system("ln -s {} /mirror/GrayScale.bmp".format(file))
+
+    def blurImage(self, file, hosts):
+        # Corre el codigo
+        status = os.system("su mpiu bash -c \"mpiexec -n {} -host {} ./mpi\"".format(self.kernel, hosts))
+        if status == 0:
+            message(file + " has been blurred")
+            resultPath = "/mirror/mpiu/images/"
+            result = resultPath + "blur_" + str(self.kernel) + ".bmp"
+            self.photoViewer.setPixmap(QPixmap(result))
 
 def blurItMessage(file):
     alert = QMessageBox()
-    alert.setText(file + " va a ser blureado")
+    alert.setWindowTitle("Blur it")
+    alert.setText(file + " will be blurred")
     alert.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
     return_value = alert.exec()
@@ -87,9 +112,10 @@ def blurItMessage(file):
     else:
         return False
 
-def blurredMessage(file):
+def message(message):
     alert = QMessageBox()
-    alert.setText(file + " ha sido blureado")
+    alert.setWindowTitle("Blur it")
+    alert.setText(message)
     alert.exec_()
 
 def checkIfIsBMP(file):
@@ -98,7 +124,7 @@ def checkIfIsBMP(file):
         return True
     else:
         alert = QMessageBox()
-        alert.setText(file + " no es una imagen en formato BMP")
+        alert.setText(file + " is not an image in BMP format")
         alert.exec_()
         return False
 

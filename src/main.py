@@ -62,12 +62,12 @@ class MainWidget(QWidget):
                     # Crea un enlace simbolico
                     os.system("ln -s {} /mirror/GrayScale.bmp".format(f))
                     # Corre el codigo
-                    # status = os.system("su mpiu bash -c \"mpiexec -n {} -f machinefile ./mpi\"".format(self.kernel))
-                    status = 0
+                    status = os.system("su mpiu bash -c \"mpiexec -n {} -f machinefile ./mpi\"".format(self.kernel))
+                    # status = 0
                     if status == 0:
                         blurredMessage(f)
                         resultPath = "/mirror/mpiu/images/"
-                        result = resultPath + "blur_" + self.kernel + ".bmp"
+                        result = resultPath + "blur_" + str(self.kernel) + ".bmp"
                         self.photoViewer.setPixmap(QPixmap(result))
 
     def setKernel(self):
